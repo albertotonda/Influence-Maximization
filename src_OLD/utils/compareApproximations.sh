@@ -1,0 +1,1 @@
+python3 compareApproximations.py --graph ../SN/facebook_combined.txt --approximations EDV-1 comparison-EDV-IC-Facebook/facebook-edv-gen-1.csv EDV-500 comparison-EDV-IC-Facebook/facebook-edv-gen-500.csv EDV-1600 comparison-EDV-IC-Facebook/facebook-edv-gen-1600.csv --simulation comparison-EDV-IC-Facebook/facebook-archive-ic-gen-32.csv
