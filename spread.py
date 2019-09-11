@@ -3,6 +3,8 @@ import random
 import numpy
 import math
 
+""" Spread models """
+
 """ Simulation of spread for Independent Cascade (IC) and Weighted Cascade (WC). 
 	Suits (un)directed graphs. 
 	Assumes the edges point OUT of the influencer, e.g., if A->B or A-B, then "A influences B".
@@ -16,7 +18,7 @@ def IC_model(G, a, p):              # a: the set of initial active nodes
 	while not converged:
 		nextB = set()
 		for n in B:
-			for m in set(G.neighbors(n)) - A: # G.neighbors follows A-B and A->B edges
+			for m in set(G.neighbors(n)) - A: # G.neighbors follows A-B and A->B (successor) edges
 				prob = random.random() # in the range [0.0, 1.0)
 				if prob <= p:
 					nextB.add(m)
@@ -56,7 +58,7 @@ def WC_model(G, a):                 # a: the set of initial active nodes
 """ Evaluates a given seed set A, simulated "no_simulations" times.
 	Returns a tuple: (the mean, the stdev).
 """
-def simulation(G, A, p, no_simulations, model):
+def MonteCarlo_simulation(G, A, p, no_simulations, model):
 	results = []
 
 	if model == 'WC':
@@ -72,4 +74,4 @@ if __name__ == "__main__":
 
 	G = nx.path_graph(100)
 	print(nx.classes.function.info(G))
-	print(simulation(G, [0, 2, 4, 6, 8, 10], 0.1, 100, 'IC'))
+	print(MonteCarlo_simulation(G, [0, 2, 4, 6, 8, 10], 0.1, 100, 'IC'))
