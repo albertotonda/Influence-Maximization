@@ -13,6 +13,7 @@ def read_graph(filename, directed=False, nodetype=int):
 	return G
 
 if __name__ == '__main__':
+	
 	logger = logging.getLogger('')
 	logger.setLevel(logging.DEBUG)
 	read_graph("graphs/facebook_combined_undirected.txt")
