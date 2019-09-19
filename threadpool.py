@@ -1,3 +1,7 @@
+"""Threadpool"""
+
+"""This script contains all the necessary ingredients for the ThreadPool class, that implements a thread pool. N threads (set when class is instanced will continuously take tasks from a queue and run them to completion, before taking the next available task in the queue. Each task is a function pointer + args. When threads read from shared data structures, there is no need to take care of concurrency. However, when they need to write, we will need to pass a threading.Lock instance to the function, asking Lock.acquire() before writing and Lock.release() when they are done."""
+
 import logging
 import sys
 IS_PY2 = sys.version_info < (3, 0)
