@@ -7,7 +7,7 @@ import inspyred
 import logging
 import random
 
-from time import time
+from time import time, strftime
 
 # local libraries
 import spread
@@ -26,8 +26,9 @@ Multi-objective evolutionary influence maximization. Parameters:
     n_threads: number of threads to be used for concurrent evaluations (default: 1)
     random_seed: seed to initialize the pseudo-random number generation (default: time)
     initial_population: individuals (seed sets) to be added to the initial population (the rest will be randomly generated)
+    population_file: name of the file that will be used to store the population at each generation (default: file named with date and time)
     """
-def moea_influence_maximization(G, p, no_simulations, model, population_size=100, offspring_size=100, max_generations=100, min_seed_nodes=None, max_seed_nodes=None, n_threads=1, random_seed=None, initial_population=None) :
+def moea_influence_maximization(G, p, no_simulations, model, population_size=100, offspring_size=100, max_generations=100, min_seed_nodes=None, max_seed_nodes=None, n_threads=1, random_seed=None, initial_population=None, population_file=None) :
 
     # initialize multi-objective evolutionary algorithm, NSGA-II
     logging.debug("Setting up NSGA-II...")
@@ -44,6 +45,9 @@ def moea_influence_maximization(G, p, no_simulations, model, population_size=100
     if max_seed_nodes == None : 
         max_seed_nodes = int( 0.1 * len(nodes))
         logging.debug("Maximum size for the seed set has been set to %d" % max_seed_nodes)
+    if population_file == None :
+        ct = time()
+        population_file = strftime("%Y-%m-%d-%H-%M-%S-population.csv")
 
     ea = inspyred.ec.emo.NSGA2(prng)
     ea.observer = ea_observer
@@ -68,6 +72,7 @@ def moea_influence_maximization(G, p, no_simulations, model, population_size=100
         n_threads = n_threads,
         min_seed_nodes = min_seed_nodes,
         max_seed_nodes = max_seed_nodes,
+        population_file = population_file,
         time_previous_generation = time(), # this will be updated in the observer
     )
 
@@ -144,6 +149,27 @@ def ea_observer(population, num_generations, num_evaluations, args) :
     logging.info('[{0:.2f} s] Generation {1:6} -- {2}'.format(timeElapsed, num_generations, best.fitness))
 
     # TODO write current state of the population to a file
+    population_file = args["population_file"]
+    
+    # find the longest individual
+    max_length = len(max(population, key=lambda x : len(x.candidate)).candidate)
+
+    with open(population_file, "w") as fp :
+        # header, of length equal to the maximum individual length in the population
+        fp.write("n_nodes,influence")
+        for i in range(0, max_length) : fp.write(",n%d" % i)
+        fp.write("\n")
+
+        # and now, we write stuff, individual by individual
+        for individual in  population :
+            fp.write("%d,%.4f" % (1.0 / individual.fitness[1], individual.fitness[0]))
+            for node in individual.candidate :
+                fp.write(",%d" % node)
+
+            for i in range(len(individual.candidate), max_length - len(individual.candidate)) :
+                fp.write(",")
+
+            fp.write("\n")
 
     return
 
@@ -283,4 +309,4 @@ if __name__ == "__main__" :
     model = 'WC'
     no_simulations = 100
 
-    seed_sets = moea_influence_maximization(G, p, no_simulations, model, n_threads=4)
+    seed_sets = moea_influence_maximization(G, p, no_simulations, model, population_size=16, n_threads=4)
