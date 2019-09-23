@@ -76,8 +76,8 @@ def moea_influence_maximization(G, p, no_simulations, model, population_size=100
         time_previous_generation = time(), # this will be updated in the observer
     )
 
-    # TODO extract seed sets from the final population/archive
-    seed_sets = []
+    # extract seed sets from the final Pareto front/archive
+    seed_sets = [ [individual.candidate, individual.fitness[0]] for individual in ea.archive ] 
 
     return seed_sets
 
@@ -173,6 +173,7 @@ def ea_observer(population, num_generations, num_evaluations, args) :
 
     return
 
+# TODO is there a way to have a multi-threaded generation of individuals?
 @inspyred.ec.variators.crossover # decorator that defines the operator as a crossover, even if it isn't in this case :-)
 def nsga2_super_operator(random, candidate1, candidate2, args) :
 
@@ -283,9 +284,9 @@ def nsga2_generator(random, args) :
     # extract random number in 1,max_seed_nodes
     individual_size = random.randint(min_seed_nodes, max_seed_nodes)
     individual = [0] * individual_size
-    logging.info( "Creating individual of size %d, with genes ranging from %d to %d" % (individual_size, nodes[0], nodes[-1]) )
+    logging.debug( "Creating individual of size %d, with genes ranging from %d to %d" % (individual_size, nodes[0], nodes[-1]) )
     for i in range(0, individual_size) : individual[i] = nodes[ random.randint(0, len(nodes)-1) ]
-    logging.info(individual)
+    logging.debug(individual)
 
     return individual
 
@@ -295,7 +296,7 @@ if __name__ == "__main__" :
     # initialize logging
     import logging
     logger = logging.getLogger('')
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO) # TODO change to .DEBUG for more in-depth logging
     formatter = logging.Formatter('[%(levelname)s %(asctime)s] %(message)s', '%Y-%m-%d %H:%M:%S') 
  
     ch = logging.StreamHandler()
@@ -308,5 +309,8 @@ if __name__ == "__main__" :
     p = 0.01
     model = 'WC'
     no_simulations = 100
+    max_generations = 5
+    n_threads = 4
+    random_seed = 42
 
-    seed_sets = moea_influence_maximization(G, p, no_simulations, model, population_size=16, n_threads=4)
+    seed_sets = moea_influence_maximization(G, p, no_simulations, model, population_size=16, random_seed=random_seed, max_generations=max_generations, n_threads=n_threads)
