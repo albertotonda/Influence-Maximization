@@ -24,18 +24,14 @@ Multi-objective evolutionary influence maximization. Parameters:
     min_seed_nodes: minimum number of nodes in a seed set (default: 1)
     max_seed_nodes: maximum number of nodes in a seed set (default: 1% of the graph size)
     n_threads: number of threads to be used for concurrent evaluations (default: 1)
-    random_seed: seed to initialize the pseudo-random number generation (default: time)
+    random_gen: already initialized pseudo-random number generation
     initial_population: individuals (seed sets) to be added to the initial population (the rest will be randomly generated)
     population_file: name of the file that will be used to store the population at each generation (default: file named with date and time)
     """
-def moea_influence_maximization(G, p, no_simulations, model, population_size=100, offspring_size=100, max_generations=100, min_seed_nodes=None, max_seed_nodes=None, n_threads=1, random_seed=None, initial_population=None, population_file=None) :
+def moea_influence_maximization(G, p, no_simulations, model, population_size=100, offspring_size=100, max_generations=100, min_seed_nodes=None, max_seed_nodes=None, n_threads=1, random_gen=random.Random(), initial_population=None, population_file=None) :
 
     # initialize multi-objective evolutionary algorithm, NSGA-II
     logging.debug("Setting up NSGA-II...")
-    prng = random.Random()
-    if random_seed == None : random_seed = time()
-    logging.debug("Random number generator seeded with %s" % str(random_seed))
-    prng.seed(random_seed)
 
     # check if some of the parameters are set; otherwise, use default values
     nodes = list(G.nodes)
@@ -49,7 +45,7 @@ def moea_influence_maximization(G, p, no_simulations, model, population_size=100
         ct = time()
         population_file = strftime("%Y-%m-%d-%H-%M-%S-population.csv")
 
-    ea = inspyred.ec.emo.NSGA2(prng)
+    ea = inspyred.ec.emo.NSGA2(random_gen)
     ea.observer = ea_observer
     ea.variator = [nsga2_super_operator]
     ea.terminator = inspyred.ec.terminators.generation_termination
@@ -308,17 +304,13 @@ def nsga2_generator(random, args) :
     offspring_size: offspring of the EA (default: value)
     max_generations: maximum generations (default: value)
     n_threads: number of threads to be used for concurrent evaluations (default: 1)
-    random_seed: seed to initialize the pseudo-random number generation (default: time)
+    random_gen: already initialized pseudo-random number generation
     initial_population: individuals (seed sets) to be added to the initial population (the rest will be randomly generated)
     """
-def ea_influence_maximization(k, G, p, no_simulations, model, population_size=100, offspring_size=100, max_generations=100, n_threads=1, random_seed=None, initial_population=None, population_file=None) :
+def ea_influence_maximization(k, G, p, no_simulations, model, population_size=100, offspring_size=100, max_generations=100, n_threads=1, random_gen=random.Random(), initial_population=None, population_file=None) :
 
     # initialize a generic evolutionary algorithm
     logging.debug("Initializing Evolutionary Algorithm...")
-    prng = random.Random()
-    if random_seed == None : random_seed = time()
-    logging.debug("Random number generator seeded with %s" % str(random_seed))
-    prng.seed(random_seed)
 
     # check if some of the optional parameters are set; otherwise, use default values
     nodes = list(G.nodes)
@@ -328,7 +320,7 @@ def ea_influence_maximization(k, G, p, no_simulations, model, population_size=10
 
     # instantiate a basic EvolutionaryComputation object, that is "empty" (no default methods defined for any component)
     # so we will need to define every method
-    ea = inspyred.ec.EvolutionaryComputation(prng)
+    ea = inspyred.ec.EvolutionaryComputation(random_gen)
     ea.observer = ea_observer
     ea.variator = [ea_super_operator]
     ea.terminator = inspyred.ec.terminators.generation_termination
@@ -476,7 +468,7 @@ if __name__ == "__main__" :
 
     import load
     k = 5
-    G = load.read_graph("graphs/facebook_combined.txt")
+    G = load.read_graph("graphs/facebook_combined_undirected.txt")
     p = 0.01
     model = 'WC'
     no_simulations = 100
@@ -484,5 +476,11 @@ if __name__ == "__main__" :
     n_threads = 1
     random_seed = 42
 
-    #seed_sets = moea_influence_maximization(G, p, no_simulations, model, population_size=16, offspring_size=16, random_seed=random_seed, max_generations=max_generations, n_threads=n_threads)
-    seed_set, spread = ea_influence_maximization(k, G, p, no_simulations, model, population_size=16, offspring_size=16, random_seed=random_seed, max_generations=max_generations, n_threads=n_threads)
+    prng = random.Random()
+    if random_seed == None: 
+        random_seed = time()
+    logging.debug("Random number generator seeded with %s" % str(random_seed))
+    prng.seed(random_seed)
+
+    seed_sets = moea_influence_maximization(G, p, no_simulations, model, population_size=16, offspring_size=16, random_gen=prng, max_generations=max_generations, n_threads=n_threads)
+    #seed_set, spread = ea_influence_maximization(k, G, p, no_simulations, model, population_size=16, offspring_size=16, random_gen=prng, max_generations=max_generations, n_threads=n_threads)
