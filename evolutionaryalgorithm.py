@@ -100,7 +100,7 @@ def nsga2_evaluator(candidates, args) :
             A_set = set(A)
 
             # TODO consider std inside the fitness in some way?
-            influence_mean, influence_std = spread.MonteCarlo_simulation(G, A_set, p, no_simulations, model)
+            influence_mean, influence_std = spread.MonteCarlo_simulation_max_hop(G, A_set, p, no_simulations, model)
             fitness[index] = inspyred.ec.emo.Pareto([influence_mean, 1.0 / float(len(A_set))])
 
     else :
@@ -126,7 +126,7 @@ def nsga2_evaluator_threaded(G, p, A, no_simulations, model, fitness, index, thr
 
     # TODO add logging?
     A_set = set(A)
-    influence_mean, influence_std = spread.MonteCarlo_simulation(G, A_set, p, no_simulations, model)
+    influence_mean, influence_std = spread.MonteCarlo_simulation_max_hop(G, A_set, p, no_simulations, model)
 
     # lock data structure before writing in it
     thread_lock.acquire()
@@ -467,13 +467,13 @@ if __name__ == "__main__" :
     logger.addHandler(ch)
 
     import load
-    k = 5
-    G = load.read_graph("graphs/facebook_combined_undirected.txt")
+    k = 10
+    G = load.read_graph("graphs/Email_URV.txt")
     p = 0.01
     model = 'WC'
     no_simulations = 100
     max_generations = 5
-    n_threads = 1
+    n_threads = 2
     random_seed = 42
 
     prng = random.Random()
@@ -482,5 +482,9 @@ if __name__ == "__main__" :
     logging.debug("Random number generator seeded with %s" % str(random_seed))
     prng.seed(random_seed)
 
+    # try to pass max_seed_nodes=k to moea:
     seed_sets = moea_influence_maximization(G, p, no_simulations, model, population_size=16, offspring_size=16, random_gen=prng, max_generations=max_generations, n_threads=n_threads)
     #seed_set, spread = ea_influence_maximization(k, G, p, no_simulations, model, population_size=16, offspring_size=16, random_gen=prng, max_generations=max_generations, n_threads=n_threads)
+
+    logging.debug("Seed sets:")
+    logging.debug(str(seed_sets))
