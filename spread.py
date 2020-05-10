@@ -119,7 +119,7 @@ def MonteCarlo_simulation(G, A, p, no_simulations, model):
 
 	return (numpy.mean(results), numpy.std(results))
 
-def MonteCarlo_simulation_max_hop(G, A, p, no_simulations, model, max_hop, random_generator=None):
+def MonteCarlo_simulation_max_hop(G, A, p, no_simulations, model, max_hop=2, random_generator=None):
 	"""
 	calculates approximated influence spread of a given seed set A, with
 	information propagation limited to a maximum number of hops
