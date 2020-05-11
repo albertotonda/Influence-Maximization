@@ -1,6 +1,11 @@
 # Influence-Maximization
 Code and data for experiments with evolutionary influence maximization
 
+## Current development status
+- Added extra argument to spread.MonteCarlo\_simulation\_max\_hop, as it needed a reference to the pseudo-random number generator
+- \*args and \*\*kargs adopted for passing fitness function as an argument
+- BIG OOF, if we use multi-threaded stuff, we cannot guarantee replicability if the evaluator has pseudo-random number generation inside
+
 ## Ideas for improvements
 - Doina has C++ code that simulates spread much faster. Maybe it could be possible to create Python bindings for that code, passing it networkx graphs
 

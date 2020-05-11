@@ -28,7 +28,7 @@ Multi-objective evolutionary influence maximization. Parameters:
     initial_population: individuals (seed sets) to be added to the initial population (the rest will be randomly generated)
     population_file: name of the file that will be used to store the population at each generation (default: file named with date and time)
     """
-def moea_influence_maximization(G, p, no_simulations, model, population_size=100, offspring_size=100, max_generations=100, min_seed_nodes=None, max_seed_nodes=None, n_threads=1, random_gen=random.Random(), initial_population=None, population_file=None) :
+def moea_influence_maximization(G, p, no_simulations, model, population_size=100, offspring_size=100, max_generations=100, min_seed_nodes=None, max_seed_nodes=None, n_threads=1, random_gen=random.Random(), initial_population=None, population_file=None, fitness_function=None, fitness_function_kargs=dict()) :
 
     # initialize multi-objective evolutionary algorithm, NSGA-II
     logging.debug("Setting up NSGA-II...")
@@ -44,6 +44,12 @@ def moea_influence_maximization(G, p, no_simulations, model, population_size=100
     if population_file == None :
         ct = time()
         population_file = strftime("%Y-%m-%d-%H-%M-%S-population.csv")
+    if fitness_function == None :
+        fitness_function = spread.MonteCarlo_simulation_max_hop
+        fitness_function_kargs["random_generator"] = random_gen # pointer to pseudo-random number generator
+        logging.debug("Fitness function not specified, defaulting to \"%s\"" % fitness_function.__name__)
+    else :
+        logging.debug("Fitness function specified, \"%s\"" % fitness_function.__name__)
 
     ea = inspyred.ec.emo.NSGA2(random_gen)
     ea.observer = ea_observer
@@ -71,6 +77,8 @@ def moea_influence_maximization(G, p, no_simulations, model, population_size=100
         max_seed_nodes = max_seed_nodes,
         population_file = population_file,
         time_previous_generation = time(), # this will be updated in the observer
+        fitness_function = fitness_function,
+        fitness_function_kargs = fitness_function_kargs,
     )
 
     # extract seed sets from the final Pareto front/archive
@@ -85,6 +93,11 @@ def nsga2_evaluator(candidates, args) :
     p = args["p"]
     model = args["model"]
     no_simulations = args["no_simulations"]
+    random_generator = args["_ec"]._random 
+
+    # NOTE code below here is an attempt at using a function pointer
+    fitness_function = args["fitness_function"]
+    fitness_function_kargs = args["fitness_function_kargs"]
 
     # we start with a list where every element is None
     fitness = [None] * len(candidates)
@@ -95,14 +108,18 @@ def nsga2_evaluator(candidates, args) :
     if n_threads == 1 :
         for index, A in enumerate(candidates) :
 
-            # TODO sort phenotype, use cache...? or manage sorting directly during individual creation? see lines 108-142 in src_OLD/multiObjective-inspyred/sn-inflmax-inspyred.py 
+            # TODO sort phenotype, use cache...? or manage sorting directly during individual creation? 
+            # TODO see lines 108-142 in src_OLD/multiObjective-inspyred/sn-inflmax-inspyred.py 
             # TODO maybe if we make sure that candidates are already sets before getting here, we could save some computational time
+            # TODO consider std inside the fitness in some way?
             A_set = set(A)
 
-            # TODO consider std inside the fitness in some way?
-            influence_mean, influence_std = spread.MonteCarlo_simulation_max_hop(G, A_set, p, no_simulations, model)
-            fitness[index] = inspyred.ec.emo.Pareto([influence_mean, 1.0 / float(len(A_set))])
+            #influence_mean, influence_std = spread.MonteCarlo_simulation_max_hop(G, A_set, p, no_simulations, model, random_generator=random_generator)
 
+            # NOTE now passing a generic function works, but the whole thing has to be implemented for the multi-threaded version
+            fitness_function_args = [G, A_set, p, no_simulations, model]
+            influence_mean, influence_std = fitness_function(*fitness_function_args, **fitness_function_kargs)
+            fitness[index] = inspyred.ec.emo.Pareto([influence_mean, 1.0 / float(len(A_set))])
     else :
         
         # create a threadpool, using the local module
@@ -114,7 +131,13 @@ def nsga2_evaluator(candidates, args) :
         thread_lock = threading.Lock()
 
         # create list of tasks for the thread pool, using the threaded evaluation function
-        tasks = [ (G, p, A, no_simulations, model, fitness, index, thread_lock) for index, A in enumerate(candidates) ]
+        #tasks = [ (G, p, A, no_simulations, model, fitness, index, thread_lock) for index, A in enumerate(candidates) ]
+        tasks = []
+        for index, A in enumerate(candidates) :
+            A_set = set(A)
+            fitness_function_args = [G, A_set, p, no_simulations, model]
+            tasks.append((fitness_function, fitness_function_args, fitness_function_kargs, fitness, A_set, index, thread_lock))
+
         thread_pool.map(nsga2_evaluator_threaded, tasks)
 
         # start thread pool and wait for conclusion
@@ -122,15 +145,27 @@ def nsga2_evaluator(candidates, args) :
 
     return fitness
 
-def nsga2_evaluator_threaded(G, p, A, no_simulations, model, fitness, index, thread_lock, thread_id) :
+#def nsga2_evaluator_threaded(G, p, A, no_simulations, model, fitness, index, thread_lock, thread_id) :
+#
+#    # TODO add logging?
+#    A_set = set(A)
+#    influence_mean, influence_std = spread.MonteCarlo_simulation_max_hop(G, A_set, p, no_simulations, model)
+#
+#    # lock data structure before writing in it
+#    thread_lock.acquire()
+#    fitness[index] = inspyred.ec.emo.Pareto([influence_mean, 1.0 / float(len(A_set))])  
+#    thread_lock.release()
+#
+#    return 
 
-    # TODO add logging?
-    A_set = set(A)
-    influence_mean, influence_std = spread.MonteCarlo_simulation_max_hop(G, A_set, p, no_simulations, model)
+def nsga2_evaluator_threaded(fitness_function, fitness_function_args, fitness_function_kargs, fitness_values, A_set, index, thread_lock, thread_id) :
+
+    #influence_mean, influence_std = spread.MonteCarlo_simulation_max_hop(G, A_set, p, no_simulations, model)
+    influence_mean, influence_std = fitness_function(*fitness_function_args, **fitness_function_kargs)
 
     # lock data structure before writing in it
     thread_lock.acquire()
-    fitness[index] = inspyred.ec.emo.Pareto([influence_mean, 1.0 / float(len(A_set))])  
+    fitness_values[index] = inspyred.ec.emo.Pareto([influence_mean, 1.0 / float(len(A_set))])  
     thread_lock.release()
 
     return 
