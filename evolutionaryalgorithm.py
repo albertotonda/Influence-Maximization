@@ -46,7 +46,7 @@ def moea_influence_maximization(G, p, no_simulations, model, population_size=100
         population_file = strftime("%Y-%m-%d-%H-%M-%S-population.csv")
     if fitness_function == None :
         fitness_function = spread.MonteCarlo_simulation_max_hop
-        fitness_function_kargs["random_generator"] = random_gen # pointer to pseudo-random number generator
+        #fitness_function_kargs["random_generator"] = random_gen # pointer to pseudo-random number generator
         logging.debug("Fitness function not specified, defaulting to \"%s\"" % fitness_function.__name__)
     else :
         logging.debug("Fitness function specified, \"%s\"" % fitness_function.__name__)
@@ -229,12 +229,12 @@ def nsga2_super_operator(random, candidate1, candidate2, args) :
         children.append( nsga2_insertion_mutation(random, list(candidate1), args) )
     elif randomChoice == 3 :
         children.append( nsga2_removal_mutation(random, list(candidate1), args) )
-    
-    # this should probably be commented or sent to logging
-    for c in children : logging.debug("randomChoice=%d : from parent of size %d, created child of size %d" % (randomChoice, len(candidate1), len(c)) )
 
     # purge the children from "None" and empty arrays
     children = [c for c in children if c is not None and len(c) > 0]
+    
+    # this should probably be commented or sent to logging
+    for c in children : logging.debug("randomChoice=%d : from parent of size %d, created child of size %d" % (randomChoice, len(candidate1), len(c)) )
     
     return children
 
@@ -507,7 +507,7 @@ if __name__ == "__main__" :
     p = 0.01
     model = 'WC'
     no_simulations = 100
-    max_generations = 5
+    max_generations = 10
     n_threads = 2
     random_seed = 42
 
@@ -518,7 +518,7 @@ if __name__ == "__main__" :
     prng.seed(random_seed)
 
     # try to pass max_seed_nodes=k to moea:
-    seed_sets = moea_influence_maximization(G, p, no_simulations, model, population_size=16, offspring_size=16, random_gen=prng, max_generations=max_generations, n_threads=n_threads)
+    seed_sets = moea_influence_maximization(G, p, no_simulations, model, population_size=16, offspring_size=16, random_gen=prng, max_generations=max_generations, n_threads=n_threads, max_seed_nodes=10, fitness_function=spread.MonteCarlo_simulation)
     #seed_set, spread = ea_influence_maximization(k, G, p, no_simulations, model, population_size=16, offspring_size=16, random_gen=prng, max_generations=max_generations, n_threads=n_threads)
 
     logging.debug("Seed sets:")

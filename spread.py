@@ -134,6 +134,7 @@ def MonteCarlo_simulation_max_hop(G, A, p, no_simulations, model, max_hop=2, ran
 	"""
 	if random_generator is None:
 		random_generator = random.Random()
+		random_generator.seed(next(iter(A))) # initialize random number generator with first seed in the seed set, to make experiment repeatable; TODO evaluate computational cost
 
 	results = []
 
