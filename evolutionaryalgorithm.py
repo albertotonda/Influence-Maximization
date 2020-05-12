@@ -46,7 +46,7 @@ def moea_influence_maximization(G, p, no_simulations, model, population_size=100
         population_file = strftime("%Y-%m-%d-%H-%M-%S-population.csv")
     if fitness_function == None :
         fitness_function = spread.MonteCarlo_simulation_max_hop
-        #fitness_function_kargs["random_generator"] = random_gen # pointer to pseudo-random number generator
+        fitness_function_kargs["random_generator"] = random_gen # pointer to pseudo-random number generator
         logging.debug("Fitness function not specified, defaulting to \"%s\"" % fitness_function.__name__)
     else :
         logging.debug("Fitness function specified, \"%s\"" % fitness_function.__name__)
@@ -342,7 +342,7 @@ def nsga2_generator(random, args) :
     random_gen: already initialized pseudo-random number generation
     initial_population: individuals (seed sets) to be added to the initial population (the rest will be randomly generated)
     """
-def ea_influence_maximization(k, G, p, no_simulations, model, population_size=100, offspring_size=100, max_generations=100, n_threads=1, random_gen=random.Random(), initial_population=None, population_file=None) :
+def ea_influence_maximization(k, G, p, no_simulations, model, population_size=100, offspring_size=100, max_generations=100, n_threads=1, random_gen=random.Random(), initial_population=None, population_file=None, fitness_function=None, fitness_function_kargs=dict()) :
 
     # initialize a generic evolutionary algorithm
     logging.debug("Initializing Evolutionary Algorithm...")
@@ -352,6 +352,13 @@ def ea_influence_maximization(k, G, p, no_simulations, model, population_size=10
     if population_file == None :
         ct = time()
         population_file = strftime("%Y-%m-%d-%H-%M-%S-population.csv")
+
+    if fitness_function == None :
+        fitness_function = spread.MonteCarlo_simulation_max_hop
+        fitness_function_kargs["random_generator"] = random_gen # pointer to pseudo-random number generator
+        logging.debug("Fitness function not specified, defaulting to \"%s\"" % fitness_function.__name__)
+    else :
+        logging.debug("Fitness function specified, \"%s\"" % fitness_function.__name__)
 
     # instantiate a basic EvolutionaryComputation object, that is "empty" (no default methods defined for any component)
     # so we will need to define every method
@@ -382,13 +389,15 @@ def ea_influence_maximization(k, G, p, no_simulations, model, population_size=10
         n_threads = n_threads,
         population_file = population_file,
         time_previous_generation = time(), # this will be updated in the observer
+        fitness_function = fitness_function,
+        fitness_function_kargs = fitness_function_kargs,
     )
 
     best_individual = max(final_population)
     best_seed_set = best_individual.candidate
-    spread = best_individual.fitness
+    best_fitness = best_individual.fitness
 
-    return best_seed_set, spread
+    return best_seed_set, best_fitness
 
 @inspyred.ec.generators.diversify # decorator that makes it impossible to generate copies
 def ea_generator(random, args) :
@@ -435,6 +444,8 @@ def ea_evaluator(candidates, args) :
     p = args["p"]
     model = args["model"]
     no_simulations = args["no_simulations"]
+    fitness_function = args["fitness_function"]
+    fitness_function_kargs = args["fitness_function_kargs"]
 
     # we start with a list where every element is None
     fitness = [None] * len(candidates)
@@ -450,7 +461,8 @@ def ea_evaluator(candidates, args) :
             A_set = set(A)
 
             # TODO consider std inside the fitness in some way?
-            influence_mean, influence_std = spread.MonteCarlo_simulation(G, A_set, p, no_simulations, model)
+            fitness_function_args = [G, A_set, p, no_simulations, model]
+            influence_mean, influence_std = fitness_function(*fitness_function_args, **fitness_function_kargs)
             fitness[index] = influence_mean
 
     else :
@@ -508,7 +520,7 @@ if __name__ == "__main__" :
     model = 'WC'
     no_simulations = 100
     max_generations = 10
-    n_threads = 2
+    n_threads = 1
     random_seed = 42
 
     prng = random.Random()
@@ -518,8 +530,8 @@ if __name__ == "__main__" :
     prng.seed(random_seed)
 
     # try to pass max_seed_nodes=k to moea:
-    seed_sets = moea_influence_maximization(G, p, no_simulations, model, population_size=16, offspring_size=16, random_gen=prng, max_generations=max_generations, n_threads=n_threads, max_seed_nodes=10, fitness_function=spread.MonteCarlo_simulation)
-    #seed_set, spread = ea_influence_maximization(k, G, p, no_simulations, model, population_size=16, offspring_size=16, random_gen=prng, max_generations=max_generations, n_threads=n_threads)
+    #seed_sets = moea_influence_maximization(G, p, no_simulations, model, population_size=16, offspring_size=16, random_gen=prng, max_generations=max_generations, n_threads=n_threads, max_seed_nodes=10, fitness_function=spread.MonteCarlo_simulation)
+    seed_sets, spread = ea_influence_maximization(k, G, p, no_simulations, model, population_size=16, offspring_size=16, random_gen=prng, max_generations=max_generations, n_threads=n_threads)
 
     logging.debug("Seed sets:")
     logging.debug(str(seed_sets))
