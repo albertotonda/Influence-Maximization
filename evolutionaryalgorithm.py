@@ -355,7 +355,7 @@ def ea_influence_maximization(k, G, p, no_simulations, model, population_size=10
 
     if fitness_function == None :
         fitness_function = spread.MonteCarlo_simulation_max_hop
-        fitness_function_kargs["random_generator"] = random_gen # pointer to pseudo-random number generator
+        #fitness_function_kargs["random_generator"] = random_gen # pointer to pseudo-random number generator
         logging.debug("Fitness function not specified, defaulting to \"%s\"" % fitness_function.__name__)
     else :
         logging.debug("Fitness function specified, \"%s\"" % fitness_function.__name__)
@@ -476,7 +476,12 @@ def ea_evaluator(candidates, args) :
         thread_lock = threading.Lock()
 
         # create list of tasks for the thread pool, using the threaded evaluation function
-        tasks = [ (G, p, A, no_simulations, model, fitness, index, thread_lock) for index, A in enumerate(candidates) ]
+        #tasks = [ (G, p, A, no_simulations, model, fitness, index, thread_lock) for index, A in enumerate(candidates) ]
+        tasks = []
+        for index, A in enumerate(candidates) :
+            A_set = set(A)
+            fitness_function_args = [G, A_set, p, no_simulations, model]
+            tasks.append((fitness_function, fitness_function_args, fitness_function_kargs, fitness, index, thread_lock))
         thread_pool.map(ea_evaluator_threaded, tasks)
 
         # start thread pool and wait for conclusion
@@ -484,17 +489,29 @@ def ea_evaluator(candidates, args) :
 
     return fitness
 
-def ea_evaluator_threaded(G, p, A, no_simulations, model, fitness, index, thread_lock, thread_id) :
+#def ea_evaluator_threaded(G, p, A, no_simulations, model, fitness, index, thread_lock, thread_id) :
+#
+#    # TODO not sure that this is needed
+#    A_set = set(A)
+#
+#    # run spread simulation
+#    influence_mean, influence_std = spread.MonteCarlo_simulation(G, A_set, p, no_simulations, model)
+#
+#    # lock shared resource, write in it, release
+#    thread_lock.acquire()
+#    fitness[index] = influence_mean
+#    thread_lock.release()
+#
+#    return
 
-    # TODO not sure that this is needed
-    A_set = set(A)
+def ea_evaluator_threaded(fitness_function, fitness_function_args, fitness_function_kargs, fitness_values, index, thread_lock, thread_id) :
 
     # run spread simulation
-    influence_mean, influence_std = spread.MonteCarlo_simulation(G, A_set, p, no_simulations, model)
+    influence_mean, influence_std = fitness_function(*fitness_function_args, **fitness_function_kargs)
 
     # lock shared resource, write in it, release
     thread_lock.acquire()
-    fitness[index] = influence_mean
+    fitness_values[index] = influence_mean
     thread_lock.release()
 
     return
@@ -520,7 +537,7 @@ if __name__ == "__main__" :
     model = 'WC'
     no_simulations = 100
     max_generations = 10
-    n_threads = 1
+    n_threads = 2
     random_seed = 42
 
     prng = random.Random()
